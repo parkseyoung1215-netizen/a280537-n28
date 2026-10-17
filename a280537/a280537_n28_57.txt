@@ -1,5 +1,5 @@
 # A280537: 57 points in the 28 x 28 x 28 grid {0..27}^3 with no four points in a plane.
-# Shows a(28) >= 57 (previous best known lower bound 56, inherited from a(27) >= 56).
+# Shows a(28) >= 57. Not a new bound: it already follows from the 66-point n = 29 result (Zimmermann contest, 2016).
 # Found 2026-10-17 by computer search (tabu local search). Checked: all C(57,4) = 395010 quadruples have nonzero determinant.
 28 57
 0 3 15
