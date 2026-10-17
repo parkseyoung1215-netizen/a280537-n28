@@ -1,5 +1,10 @@
 # A280537: a new lower bound a(28) ≥ 57 (no four points in a plane)
 
+**My decision.**
+I started this project because I wanted to become someone who solves hard or unsolved problems with AI. For my first attempt I tried the no-three-in-line problem, but even after trying many different cases and methods I did not succeed. So I decided to switch to a different problem from the list of problems I had set out at the beginning, and I chose this one. When the result came out, I cross-checked it again on my own MacBook to confirm it.
+
+What I took away from this challenge is that I should keep trying to use AI to work on the world’s problems that are still not fully solved. AI is a useful enough tool to make these attempts possible, and I think it should be used efficiently.
+
 **Problem.** [OEIS A280537](https://oeis.org/A280537): the maximum number of points that can be chosen from an n × n × n grid with no four of them in a plane.
 
 **Result.** `a280537_n28_57.txt` gives 57 points in the 28 × 28 × 28 grid {0..27}³, no four of them coplanar. So **a(28) ≥ 57**.
