@@ -1,4 +1,4 @@
-# A280537: a new lower bound a(28) ≥ 57 (no four points in a plane)
+# A280537: a 57-point configuration for n = 28 (no four points in a plane)
 
 **My decision.**
 I started this project because I wanted to become someone who solves hard or unsolved problems with AI. For my first attempt I tried the no-three-in-line problem, but even after trying many different cases and methods I did not succeed. So I decided to switch to a different problem from the list of problems I had set out at the beginning, and I chose this one. When the result came out, I cross-checked it again on my own MacBook to confirm it.
@@ -7,14 +7,12 @@ What I took away from this challenge is that I should keep trying to use AI to w
 
 **Problem.** [OEIS A280537](https://oeis.org/A280537): the maximum number of points that can be chosen from an n × n × n grid with no four of them in a plane.
 
-**Result.** `a280537_n28_57.txt` gives 57 points in the 28 × 28 × 28 grid {0..27}³, no four of them coplanar. So **a(28) ≥ 57**.
+**Result.** `a280537_n28_57.txt` gives 57 points in the 28 × 28 × 28 grid {0..27}³, no four of them coplanar. This shows a(28) ≥ 57, but **this is not a new lower bound** (see the correction below).
 
-**Previous best known (as of 2026-10-17).**
+**Correction (2026-10-17).** I first wrote that this was a new lower bound, because I thought the previous best for n = 28 was 56. That was wrong. Al Zimmermann's 2016 contest "Non-Coplanar Points" reports 66 points for n = 29. Any plane x = const can hold at most 3 points, so removing the three outer layers x = 28, y = 28 and z = 28 from a 66-point configuration removes at most 9 points and leaves at least 57 points in the 28 × 28 × 28 grid. So a(28) ≥ 57 already follows from the known n = 29 result. A real improvement would need at least 58 points, and possibly more, depending on the n = 29 configuration, which I have not seen.
+
 - The OEIS entry lists terms and lower bounds only up to n = 18.
-- Al Zimmermann's 2016 contest "Non-Coplanar Points" covered prime n only (best values there: 66 at n = 29).
-- The table in Kudriashov's 2026 note (A280537 configurations, n = 9..29) gives 56 for n = 28, inherited from a(27) ≥ 56 (any configuration in a 27-cube also fits in a 28-cube).
-
-As far as we could find, no 28-cube configuration with more than 56 points had been published.
+- Al Zimmermann's contest results: https://azspcs.com/Contest/Tetrahedra/FinalReport
 
 ## Verification
 Two independent checks, both included or reproducible:
