@@ -22,6 +22,9 @@ Two independent checks, both included or reproducible:
    ```
 2. Plane-hashing check: each of the C(57,3) = 29,260 triples spans a plane (no collinear triple). Every triple
    gives a different plane (29,260 distinct planes), so no plane contains four of the points.
+   ```
+3. Re-checked independently on the author's own MacBook Air (2026-10-17):
+   `OK a280537_n28_57.txt n=28: 57 points, no four coplanar`.
 
 ## How it was found
 `search5.c` uses min-conflicts tabu local search for a fixed number of points K. Each grid cell keeps a count of how many
