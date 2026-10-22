@@ -4,6 +4,14 @@ The world as a book, and you are the author. Set up today's world, write an even
 ("Iran closes the Strait of Hormuz", "the Bank of Korea raises rates by 2 points",
 "wheat harvests fall 30%"), and watch how the world reacts week by week.
 
+## Ask a question
+
+Type a question ("What will the Fed decide in October?", "What if China blockades Taiwan?").
+The app suggests the main possible outcomes with rough probabilities (marked as AI estimates;
+replace them with real numbers if you have them), runs one world per outcome at the same time,
+and shows them side by side with the things that differ most between them. Underneath, each
+outcome is its own branch with its own market expectation, so everything below still applies.
+
 ## How it works
 
 1. **The world is a growing list of things that can change.** It starts with basic
@@ -53,19 +61,19 @@ different, sorted by the size of the gap. Each branch is saved in its own file i
    ```
    OPENAI_API_KEY=sk-...
    ```
-2. Start:
+2. On a Mac, double-click `start.command` (or `시작.command`). Or in a terminal:
    ```
    cd what-if-world
    python3 app.py
    ```
 3. The browser opens at http://localhost:8000.
 
-No extra packages needed. Model: `gpt-4o-mini` by default (`WHATIF_MODEL` to change).
+No extra packages needed. Model: `gpt-5.4` by default (`WHATIF_MODEL` to change).
 The story language is Korean by default (`WHATIF_LANG=English` to change).
 Edit the `context` list in `world.json` to tell the game master what the world looks like
 today, because the model may not know recent events.
 
 ## Status
 
-First version. Next: check the world against an event whose result is known
-(the 2026 Hormuz closure), and add more indicators and historical cases.
+Working prototype. Next: check the simulator against an event whose result is known
+(the 2026 Strait of Hormuz closure), and keep the world context up to date.

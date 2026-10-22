@@ -14,7 +14,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Lock
 from urllib.parse import parse_qs, urlparse
 
-from engine import HERE, World, list_branches
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+
+from engine import HERE, SAVES, World, list_branches, suggest_outcomes
 
 PORT = int(os.environ.get("WHATIF_PORT", "8000"))
 lock = Lock()  # one change at a time
@@ -22,6 +25,67 @@ lock = Lock()  # one change at a time
 names = list_branches() or ["main"]
 branches = {n: World(n) for n in names}
 active = "main" if "main" in branches else names[0]
+
+
+QUESTIONS = os.path.join(SAVES, "questions.json")
+
+
+def load_questions():
+    if os.path.exists(QUESTIONS):
+        with open(QUESTIONS, encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+
+def save_questions(qs):
+    os.makedirs(SAVES, exist_ok=True)
+    with open(QUESTIONS, "w", encoding="utf-8") as f:
+        json.dump(qs, f, ensure_ascii=False, indent=1)
+
+
+def run_question(question, outcomes, weeks):
+    """Fork one branch per outcome from the active branch, run them all at once."""
+    base = branches[active]
+    weeks = max(1, min(int(weeks or 1), 4))
+    outcomes = [o for o in outcomes if str(o.get("event") or "").strip()][:4]
+    if len(outcomes) < 2:
+        raise ValueError("결과가 두 개 이상 필요해요")
+    probs = {str(o.get("name") or f"결과{i+1}").strip()[:40]: float(o.get("prob") or 0) for i, o in enumerate(outcomes)}
+    use_exp = sum(probs.values()) > 0
+    source = "AI 추정" if all(o.get("prob_source") == "AI" for o in outcomes) else "author"
+    short = question.strip()[:24]
+    made = []
+    for i, o in enumerate(outcomes):
+        oname = list(probs)[i]
+        name, k = f"{short} · {oname}", 2
+        while name in branches:
+            name, k = f"{short} · {oname} ({k})", k + 1
+        w = base.fork(name, base.state["week"])
+        known = None
+        if use_exp:
+            eid = w.set_expectation(f"q_{len(load_questions()) + 1}", question, probs, source=source)
+            known = {"id": eid, "outcome": oname}
+        branches[name] = w
+        made.append((w, o["event"].strip(), known))
+
+    def run(job):
+        w, event, known = job
+        w.step(event, known=known)
+        for _ in range(weeks - 1):
+            w.step(None)
+        return w.name
+
+    with ThreadPoolExecutor(max_workers=len(made)) as pool:
+        names = list(pool.map(run, made))
+    q = {"question": question, "asked": datetime.now().isoformat(timespec="minutes"),
+         "from_branch": base.name, "from_week": base.state["week"], "weeks": weeks,
+         "outcomes": [{"name": list(probs)[i], "event": o["event"], "prob": list(probs.values())[i],
+                       "prob_source": o.get("prob_source", "author"), "branch": names[i]}
+                      for i, o in enumerate(outcomes)]}
+    qs = load_questions()
+    qs.append(q)
+    save_questions(qs)
+    return q
 
 
 def branch_info():
@@ -40,7 +104,7 @@ class Handler(BaseHTTPRequestHandler):
     def everything(self):
         w = branches[active]
         return {"config": w.cfg, "active": active, "branches": branch_info(),
-                "state": w.state, "history": w.history}
+                "state": w.state, "history": w.history, "questions": load_questions()[-20:]}
 
     def do_GET(self):
         url = urlparse(self.path)
@@ -65,7 +129,20 @@ class Handler(BaseHTTPRequestHandler):
         try:
             with lock:
                 w = branches[active]
-                if self.path == "/api/step":
+                if self.path == "/api/question/outcomes":
+                    q = str(body.get("question") or "").strip()
+                    if not q:
+                        return self.send(400, {"error": "질문을 적어주세요"})
+                    return self.send(200, {"outcomes": suggest_outcomes(q, w.cfg["context"], int(body.get("n") or 3))})
+                elif self.path == "/api/question/run":
+                    q = str(body.get("question") or "").strip()
+                    if not q:
+                        return self.send(400, {"error": "질문을 적어주세요"})
+                    result = run_question(q, body.get("outcomes") or [], body.get("weeks"))
+                    data = self.everything()
+                    data["last_question"] = result
+                    return self.send(200, data)
+                elif self.path == "/api/step":
                     w.step(body.get("event"))
                 elif self.path == "/api/undo":
                     w.undo()

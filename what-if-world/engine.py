@@ -26,7 +26,7 @@ from datetime import date, timedelta
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SAVES = os.path.join(HERE, "saves")
-MODEL = os.environ.get("WHATIF_MODEL", "gpt-4o-mini")
+MODEL = os.environ.get("WHATIF_MODEL", "gpt-5.4")
 LANG = os.environ.get("WHATIF_LANG", "Korean")
 HISTORY_WEEKS = 8        # past weeks of story the game master reads
 LINK_WEEKS = 3           # past weeks of changes it can point to as causes
@@ -181,6 +181,36 @@ def list_branches():
     return names
 
 
+OUTCOMES_SYSTEM = """The user asks a what-if question about the real world. List the {n} most
+plausible distinct outcomes. For each outcome write one concrete event sentence that a world
+simulation can run ("The Fed cuts its rate by 0.25 percentage points"), and your rough estimate of
+how likely markets and experts think it is (probabilities add up to 100). These are estimates,
+not data. Use the context the user gives about today's world.
+Write name and event in {lang}. Reply with JSON only:
+{{"outcomes": [{{"name": "short name", "event": "one event sentence", "prob": 60}}]}}"""
+
+
+def suggest_outcomes(question, context, n=3, ask=None):
+    """Ask the model for the main possible outcomes of a question."""
+    ask = ask or ask_openai
+    user = "Today's world (context):\n" + "\n".join(f"- {c}" for c in context) + f"\n\nQuestion: {question}"
+    raw = ask(OUTCOMES_SYSTEM.format(n=n, lang=LANG), user)
+    out = []
+    for o in (raw.get("outcomes") or [])[:4]:
+        if not isinstance(o, dict) or not str(o.get("event") or "").strip():
+            continue
+        try:
+            prob = max(0.0, float(o.get("prob", 0)))
+        except (TypeError, ValueError):
+            prob = 0.0
+        out.append({"name": str(o.get("name") or o["event"])[:40].strip(),
+                    "event": str(o["event"]).strip()[:300], "prob": prob, "prob_source": "AI"})
+    total = sum(o["prob"] for o in out)
+    for o in out:
+        o["prob"] = round(o["prob"] * 100 / total) if total else 0
+    return out
+
+
 class World:
     """One branch of the world: its own state and its own history."""
 
@@ -258,7 +288,7 @@ class World:
                        "state": self.state, "history": self.history}, f, ensure_ascii=False)
 
     # ---------- prompt ----------
-    def build_prompt(self, event):
+    def build_prompt(self, event, known=None):
         items = self.state["items"]
         L = [f"Today in the simulation: {self.state['date']} (week {self.state['week']}).", "",
              "What the world looks like (context from the author):"]
@@ -306,6 +336,12 @@ class World:
         L += [f"- [{c.get('kind', 'event')}] {c['name']}: {c['event']} -> {c['effects']}" for c in self.cases]
         L += ["", f"New event this week: {event}" if event else
               "No new event this week. Continue from what already happened."]
+        if event and known and known.get("id") in exps:
+            e = exps[known["id"]]
+            p = e["outcomes"].get(known.get("outcome"), 0)
+            L.append(f"This event is the outcome \"{known['outcome']}\" of expectation {known['id']} "
+                     f"({e['topic']}), which markets priced at {p:.0f}%: a surprise of {100 - p:.0f}%. "
+                     f"Size market reactions by this surprise and use it as expectation_match.")
         return "\n".join(L)
 
     # ---------- checking ----------
@@ -502,11 +538,14 @@ class World:
                 it["value"] = round(it["value"] + c["change"], 2)
 
     # ---------- one week ----------
-    def step(self, event=None, ask=None):
+    def step(self, event=None, ask=None, known=None):
+        """One week. 'known' = {"id", "outcome"} when the caller knows which expected outcome this is."""
         ask = ask or ask_openai
         event = (event or "").strip() or None
         week = self.state["week"] + 1
-        raw = ask(SYSTEM.format(lang=LANG), self.build_prompt(event))
+        raw = ask(SYSTEM.format(lang=LANG), self.build_prompt(event, known))
+        if event and known and known.get("id") in self.state["expectations"]:
+            raw["expectation_match"] = known  # the code knows the match; do not leave it to the model
         before = copy.deepcopy(self.state)
         expectations_before = copy.deepcopy(self.state["expectations"])
         try:
