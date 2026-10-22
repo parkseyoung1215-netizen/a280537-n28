@@ -43,10 +43,13 @@ def save_questions(qs):
         json.dump(qs, f, ensure_ascii=False, indent=1)
 
 
-def run_question(question, outcomes, weeks):
-    """Fork one branch per outcome from the active branch, run them all at once."""
-    base = branches[active]
-    weeks = max(1, min(int(weeks or 1), 4))
+def run_question(question, outcomes, weeks, span="week", start="fresh"):
+    """One branch per outcome, all run at once.
+    start="fresh": each outcome starts from a clean world dated today.
+    start="branch": each outcome forks from the active branch."""
+    span = "day" if span == "day" else "week"
+    base = branches[active] if start == "branch" else None
+    weeks = max(1, min(int(weeks or 1), 5))
     outcomes = [o for o in outcomes if str(o.get("event") or "").strip()][:4]
     if len(outcomes) < 2:
         raise ValueError("결과가 두 개 이상 필요해요")
@@ -60,7 +63,7 @@ def run_question(question, outcomes, weeks):
         name, k = f"{short} · {oname}", 2
         while name in branches:
             name, k = f"{short} · {oname} ({k})", k + 1
-        w = base.fork(name, base.state["week"])
+        w = base.fork(name, base.state["week"]) if base else World(name)
         known = None
         if use_exp:
             eid = w.set_expectation(f"q_{len(load_questions()) + 1}", question, probs, source=source)
@@ -70,15 +73,16 @@ def run_question(question, outcomes, weeks):
 
     def run(job):
         w, event, known = job
-        w.step(event, known=known)
+        w.step(event, known=known, span=span)
         for _ in range(weeks - 1):
-            w.step(None)
+            w.step(None, span=span)
         return w.name
 
     with ThreadPoolExecutor(max_workers=len(made)) as pool:
         names = list(pool.map(run, made))
     q = {"question": question, "asked": datetime.now().isoformat(timespec="minutes"),
-         "from_branch": base.name, "from_week": base.state["week"], "weeks": weeks,
+         "from_branch": base.name if base else "(새 현재 세계)", "from_week": base.state["week"] if base else 0,
+         "weeks": weeks, "span": span,
          "outcomes": [{"name": list(probs)[i], "event": o["event"], "prob": list(probs.values())[i],
                        "prob_source": o.get("prob_source", "author"), "branch": names[i]}
                       for i, o in enumerate(outcomes)]}
@@ -138,10 +142,15 @@ class Handler(BaseHTTPRequestHandler):
                     q = str(body.get("question") or "").strip()
                     if not q:
                         return self.send(400, {"error": "질문을 적어주세요"})
-                    result = run_question(q, body.get("outcomes") or [], body.get("weeks"))
+                    result = run_question(q, body.get("outcomes") or [], body.get("weeks"),
+                                          body.get("span"), body.get("start") or "fresh")
                     data = self.everything()
                     data["last_question"] = result
                     return self.send(200, data)
+                elif self.path == "/api/context":
+                    w.set_context(body.get("lines") or [])
+                    for other in branches.values():
+                        other.cfg["context"] = w.cfg["context"]
                 elif self.path == "/api/step":
                     w.step(body.get("event"))
                 elif self.path == "/api/undo":

@@ -138,6 +138,10 @@
       <h2>무엇이 궁금한가요?</h2>
       <textarea id="question" placeholder="질문을 적어보세요. 예: 연준 10월 금리 결정은 어떻게 될까? / 중국이 대만을 봉쇄하면?"></textarea>
       <div class="examples" id="qexamples"></div>
+      <details id="ctx" style="margin-top:8px"><summary class="small"><b>오늘의 세계 상황</b> — AI가 모르는 최근 소식을 적어두면 훨씬 정확해져요 <span id="ctxinfo"></span></summary>
+        <textarea id="ctxtext" rows="6" style="margin-top:6px" placeholder="한 줄에 하나씩. 예:&#10;오늘(10/28) CME FedWatch: 동결 80%, 인하 20%&#10;금값은 이번 달 사상 최고치 근처&#10;호르무즈 해협은 9월부터 사실상 막혀 있음"></textarea>
+        <div class="buttons" style="margin-top:4px"><button id="ctxsave">상황 저장</button></div>
+      </details>
       <div class="buttons"><button class="primary" id="qsuggest">가능한 결과 만들기</button></div>
       <div id="qdraft"></div>
       <div class="status" id="status"></div>
@@ -285,7 +289,7 @@ function render() {
   const {map, kids} = allChanges();
   $("timeline").innerHTML = history.length ? [...history].reverse().map(h => `
     <div class="week">
-      <h3>${h.week}주 차 · ${h.date}</h3>
+      <h3>${stepLabel(h)} · ${h.date}</h3>
       ${h.event ? `<div class="event">사건: ${esc(h.event)}</div>` : ""}
       <div class="narrative">${esc(h.narrative)}</div>
       ${surpriseLine(h)}
@@ -301,6 +305,8 @@ function render() {
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
   renderBranches();
   renderExps();
+  if (document.activeElement !== $("ctxtext")) $("ctxtext").value = (data.config.context || []).join("\n");
+  $("ctxinfo").textContent = `(${(data.config.context || []).length}줄)`;
   $("storyof").textContent = `· 갈래: ${data.active}`;
   if (tab === "question") { viewQuestion(); return; }
   if (tab === "changes") viewChanges(); else if (tab === "chain") viewChain(map, kids);
@@ -335,7 +341,7 @@ function viewChain(map, kids) {
   $("view").innerHTML = evWeeks.slice().reverse().map(h => {
     const seen = new Set();
     const roots = h.changes.filter(c => (c.caused_by || []).includes("event")).map(c => c.id);
-    return `<div class="group"><h4>${h.week}주 차 사건: ${esc(h.event)}</h4>
+    return `<div class="group"><h4>${stepLabel(h)} 사건: ${esc(h.event)}</h4>
       <ul class="tree">${roots.map(id => subtree(id, map, kids, seen, true)).join("") || "<li class='small'>직접 연결된 변화 없음</li>"}</ul>
       <p class="small">영향받은 항목 ${seen.size}개 · 이후 주차까지 이어진 연결 포함</p></div>`;
   }).join("");
@@ -357,6 +363,8 @@ function viewTable() {
   </table></div>`;
 }
 
+const stepLabel = h => h.span === "day" ? `${h.week}단계(하루)` : `${h.week}주 차`;
+
 // ---------- question mode ----------
 const QEXAMPLES = ["연준 10월 금리 결정은?", "중국이 대만을 봉쇄하면?", "미국 중간선거 하원은 누가 가져갈까?", "러시아-우크라이나 협상은 어떻게 될까?"];
 let qDraft = null, qSel = null;
@@ -373,7 +381,9 @@ function renderQDraft() {
     <p class="ai">${qDraft.outcomes.some(o => o.prob_source === "AI") ? "확률은 AI 추정이에요. 실제 숫자(예: 시장 예측, 여론조사)를 알면 고쳐주세요. 모두 0으로 두면 확률 없이 돌려요." : "직접 넣은 확률을 써요."}</p>
     <div class="buttons">
       <button id="qadd">결과 추가</button>
-      <select id="qweeks"><option value="1">1주 뒤까지</option><option value="2">2주 뒤까지</option><option value="3">3주 뒤까지</option><option value="4">4주 뒤까지</option></select>
+      <select id="qspan"><option value="day">당일 반응 (하루 단위)</option><option value="week">1주 단위</option></select>
+      <select id="qweeks"><option value="1">1번</option><option value="2">2번</option><option value="3">3번</option><option value="4">4번</option><option value="5">5번</option></select>
+      <select id="qstart"><option value="fresh">깨끗한 현재 세계에서 (추천)</option><option value="branch">지금 갈래에서 이어서</option></select>
       <button class="primary" id="qrun">모두 돌리기</button>
     </div>`;
   document.querySelectorAll("#qdraft input").forEach(inp => inp.oninput = () => {
@@ -407,7 +417,8 @@ function suggestOutcomes() {
 function runQuestion() {
   const n = qDraft.outcomes.filter(o => o.event.trim()).length;
   busy(`결과 ${n}개의 세계를 동시에 돌리는 중… (30초~2분)`, async () => {
-    data = await call("/api/question/run", {question: qDraft.question, outcomes: qDraft.outcomes, weeks: +$("qweeks").value});
+    data = await call("/api/question/run", {question: qDraft.question, outcomes: qDraft.outcomes,
+      weeks: +$("qweeks").value, span: $("qspan").value, start: $("qstart").value});
     qDraft = null; renderQDraft(); $("question").value = "";
     qSel = data.questions.length - 1; tab = "question"; render();
   });
@@ -429,14 +440,15 @@ async function viewQuestion() {
   try { worlds = await Promise.all(q.outcomes.map(o => call("/api/branch?name=" + encodeURIComponent(o.branch)))); }
   catch (e) { $("qbody").textContent = "이 질문의 갈래 일부가 지워졌어요."; return; }
   const start = q.from_week;
+  const unit = q.span === "day" ? "하루" : "1주";
   $("qbody").innerHTML = `
-    <p class="small">${q.from_week}주 차 세계에서 출발해 ${q.weeks}주 뒤까지 돌렸어요.</p>
+    <p class="small">${q.from_branch === "(새 현재 세계)" ? "깨끗한 현재 세계" : `'${esc(q.from_branch)}' ${q.from_week}단계`}에서 출발해 ${unit} 단위로 ${q.weeks}번 돌렸어요. 숫자는 모두 <b>질문을 던진 시점 대비</b> 변화예요. 기록 시각 ${q.asked.replace("T", " ")}.</p>
     <div class="qcols" style="grid-template-columns: repeat(${Math.min(q.outcomes.length, 3)}, minmax(0, 1fr))">
       ${q.outcomes.map((o, i) => { const hs = worlds[i].history.slice(start);
         return `<div class="qcol"><h4>${esc(o.name)}</h4>
           <div class="small">${o.prob ? `확률 ${(+o.prob).toFixed(0)}% ${o.prob_source === "AI" ? "<span class='ai'>(AI 추정)</span>" : ""}` : "확률 없음"}</div>
           ${hs[0] ? surpriseLine(hs[0]) + confLine(hs[hs.length - 1]) : ""}
-          ${hs.map(h => `<p><b>${h.week}주 차</b> ${esc(h.narrative)}</p>`).join("")}
+          ${hs.map(h => `<p><b>${stepLabel(h)}</b> ${esc(h.narrative)}</p>`).join("")}
           <button class="x" data-open="${esc(o.branch)}">이 세계 자세히 보기</button></div>`; }).join("")}
     </div>
     ${diffTable(q, worlds)}`;
@@ -444,6 +456,14 @@ async function viewQuestion() {
   document.querySelectorAll("#qbody [data-item]").forEach(el => el.onclick = () => { sel = el.dataset.item; renderChartMulti(q, worlds); });
 }
 
+function baseOf(w, q, id) {
+  const h = q.from_week > 0 ? w.history[q.from_week - 1] : null;
+  const it = h && h.state.items[id];
+  return it ? it.value : 0;
+}
+function rel(v, b, unit) {  // change since the question was asked
+  return unit === "%" ? ((1 + v / 100) / (1 + b / 100) - 1) * 100 : v - b;
+}
 function diffTable(q, worlds) {
   const ids = new Set(); worlds.forEach(w => Object.keys(w.state.items).forEach(id => ids.add(id)));
   const num = [], st = [];
@@ -454,8 +474,8 @@ function diffTable(q, worlds) {
       const vals = its.map(x => x ? x.status : "");
       if (new Set(vals).size > 1) st.push({id, it, vals});
     } else {
-      const vals = its.map(x => x ? x.value : 0);
-      const spread = Math.max(...vals) - Math.min(...vals);
+      const vals = its.map((x, k) => rel(x ? x.value : 0, baseOf(worlds[k], q, id), it.unit));
+      const spread = Math.max(...vals.map(Math.abs), Math.max(...vals) - Math.min(...vals));
       if (spread >= 0.05) num.push({id, it, vals, spread});
     }
   }
@@ -468,7 +488,7 @@ function diffTable(q, worlds) {
 function renderChartMulti(q, worlds) {
   const it = worlds.map(w => w.state.items[sel]).find(Boolean);
   if (!it || it.unit === "status") return;
-  const series = worlds.map(w => [0, ...w.history.map(h => h.state.items[sel] ? h.state.items[sel].value : 0)]);
+  const series = worlds.map(w => [0, ...w.history.slice(q.from_week).map(h => rel(h.state.items[sel] ? h.state.items[sel].value : 0, baseOf(w, q, sel), it.unit))]);
   const all = series.flat(), lo = Math.min(0, ...all), hi = Math.max(0, ...all), span = (hi - lo) || 1, len = Math.max(...series.map(s => s.length));
   const W = 560, H = 180, P = 32, x = i => P + (W - 2*P) * (len === 1 ? 0 : i / (len - 1)), y = v => H - P + 8 - (H - 2*P) * (v - lo) / span;
   const dash = ["", "6 4", "2 3", "10 3 2 3"];
@@ -522,7 +542,7 @@ async function viewCompare() {
   let split = 0;
   while (split < A.history.length && split < B.history.length &&
          A.history[split].event === B.history[split].event && A.history[split].narrative === B.history[split].narrative) split++;
-  const since = (X) => X.history.slice(split).map(h => `<li>${h.week}주 차${h.event ? ` · <b>${esc(h.event)}</b>` : ""}<br>${esc(h.narrative)}${surpriseLine(h)}${confLine(h)}</li>`).join("") || "<li>갈라진 뒤 진행한 주가 없어요</li>";
+  const since = (X) => X.history.slice(split).map(h => `<li>${stepLabel(h)}${h.event ? ` · <b>${esc(h.event)}</b>` : ""}<br>${esc(h.narrative)}${surpriseLine(h)}${confLine(h)}</li>`).join("") || "<li>갈라진 뒤 진행한 주가 없어요</li>";
   const ids = new Set([...Object.keys(A.state.items), ...Object.keys(B.state.items)]);
   const rows = [];
   for (const id of ids) {
@@ -577,6 +597,7 @@ async function act(path, body, msg) {
 $("qexamples").innerHTML = QEXAMPLES.map(e => `<span>${e}</span>`).join("");
 document.querySelectorAll("#qexamples span").forEach(s => s.onclick = () => $("question").value = s.textContent);
 $("qsuggest").onclick = suggestOutcomes;
+$("ctxsave").onclick = () => act("/api/context", {lines: $("ctxtext").value.split("\n")}, "상황을 저장하는 중…");
 $("examples").innerHTML = EXAMPLES.map(e => `<span>${e}</span>`).join("");
 document.querySelectorAll("#examples span").forEach(s => s.onclick = () => $("event").value = s.textContent);
 document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });

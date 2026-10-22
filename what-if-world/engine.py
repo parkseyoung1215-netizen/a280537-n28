@@ -86,7 +86,9 @@ How to think:
    say so and keep changes small.
 3. Governments, central banks, companies, markets and people react the way they really tend to react.
    Effects can continue in later weeks; a shock usually fades unless something keeps it going.
-4. Changes are for THIS week only, relative to last week.
+4. Changes are for THIS step only, relative to the previous step. A step is one week, or one
+   trading day when the prompt says so. For one day, show the reaction markets would have on
+   that day (often most of the first move), not effects that take weeks.
 5. Never invent today's levels. Numbers are always changes:
    unit "%"  = percent change, "pp" = percentage points, "count" = number of people or things
    added since the start (for example refugees, job losses), "status" = a short text describing
@@ -261,7 +263,7 @@ class World:
         for c in self.cfg["countries"]:
             for k, spec in self.cfg["country_indicators"].items():
                 items[f"{slug(c)}.{k}"] = self.make_item(c, k, spec["label"], spec["unit"], True, spec.get("max_week"))
-        return {"week": 0, "date": self.cfg["start_date"], "items": items, "expectations": {}}
+        return {"week": 0, "date": date.today().isoformat(), "items": items, "expectations": {}}
 
     @staticmethod
     def make_item(scope, name, label, unit, basic=False, max_week=None, week=0):
@@ -290,7 +292,9 @@ class World:
     # ---------- prompt ----------
     def build_prompt(self, event, known=None):
         items = self.state["items"]
-        L = [f"Today in the simulation: {self.state['date']} (week {self.state['week']}).", "",
+        span = getattr(self, "_span", "week")
+        L = [f"Today in the simulation: {self.state['date']} (step {self.state['week']}).",
+             "This step covers ONE TRADING DAY." if span == "day" else "This step covers one week.", "",
              "What the world looks like (context from the author):"]
         L += [f"- {c}" for c in self.cfg["context"]]
 
@@ -335,7 +339,7 @@ class World:
         L += ["", "Historical cases:"]
         L += [f"- [{c.get('kind', 'event')}] {c['name']}: {c['event']} -> {c['effects']}" for c in self.cases]
         L += ["", f"New event this week: {event}" if event else
-              "No new event this week. Continue from what already happened."]
+              "No new event this step. Continue from what already happened."]
         if event and known and known.get("id") in exps:
             e = exps[known["id"]]
             p = e["outcomes"].get(known.get("outcome"), 0)
@@ -451,6 +455,17 @@ class World:
             (it.get("scope_label") for it in items.values() if it["scope"] == scope and it.get("scope_label")), scope)
         return item_id
 
+    # ---------- today's context (shared by all branches) ----------
+    def set_context(self, lines):
+        lines = [str(l).strip()[:400] for l in lines if str(l).strip()][:30]
+        self.cfg["context"] = lines
+        path = os.path.join(HERE, "world.json")
+        with open(path, encoding="utf-8") as f:
+            cfg = json.load(f)
+        cfg["context"] = lines
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+
     # ---------- market expectations ----------
     @staticmethod
     def clean_outcomes(outcomes):
@@ -538,11 +553,12 @@ class World:
                 it["value"] = round(it["value"] + c["change"], 2)
 
     # ---------- one week ----------
-    def step(self, event=None, ask=None, known=None):
+    def step(self, event=None, ask=None, known=None, span="week"):
         """One week. 'known' = {"id", "outcome"} when the caller knows which expected outcome this is."""
         ask = ask or ask_openai
         event = (event or "").strip() or None
         week = self.state["week"] + 1
+        self._span = "day" if span == "day" else "week"
         raw = ask(SYSTEM.format(lang=LANG), self.build_prompt(event, known))
         if event and known and known.get("id") in self.state["expectations"]:
             raw["expectation_match"] = known  # the code knows the match; do not leave it to the model
@@ -556,9 +572,11 @@ class World:
             self.state = before
             raise
         self.state["week"] = week
-        self.state["date"] = (date.fromisoformat(self.state["date"]) + timedelta(days=7)).isoformat()
+        self.state["date"] = (date.fromisoformat(self.state["date"]) +
+                              timedelta(days=1 if self._span == "day" else 7)).isoformat()
         entry = {
             "week": week,
+            "span": self._span,
             "date": self.state["date"],
             "event": event,
             "interpretation": raw.get("interpretation", ""),
