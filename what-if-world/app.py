@@ -12,12 +12,20 @@ import traceback
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Lock
+from urllib.parse import parse_qs, urlparse
 
-from engine import HERE, World
+from engine import HERE, World, list_branches
 
 PORT = int(os.environ.get("WHATIF_PORT", "8000"))
-world = World()
-lock = Lock()  # one week at a time
+lock = Lock()  # one change at a time
+
+names = list_branches() or ["main"]
+branches = {n: World(n) for n in names}
+active = "main" if "main" in branches else names[0]
+
+
+def branch_info():
+    return [{"name": n, "week": w.state["week"], "parent": w.parent} for n, w in branches.items()]
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -30,28 +38,56 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def everything(self):
-        return {"config": world.cfg, "state": world.state, "history": world.history}
+        w = branches[active]
+        return {"config": w.cfg, "active": active, "branches": branch_info(),
+                "state": w.state, "history": w.history}
 
     def do_GET(self):
-        if self.path in ("/", "/index.html"):
+        url = urlparse(self.path)
+        if url.path in ("/", "/index.html"):
             with open(os.path.join(HERE, "index.html"), "rb") as f:
                 self.send(200, f.read(), "text/html")
-        elif self.path == "/api/world":
+        elif url.path == "/api/world":
             self.send(200, self.everything())
+        elif url.path == "/api/branch":
+            name = parse_qs(url.query).get("name", [""])[0]
+            if name not in branches:
+                return self.send(404, {"error": "no such branch"})
+            w = branches[name]
+            self.send(200, {"name": name, "state": w.state, "history": w.history, "parent": w.parent})
         else:
             self.send(404, {"error": "not found"})
 
     def do_POST(self):
+        global active
         length = int(self.headers.get("Content-Length") or 0)
         body = json.loads(self.rfile.read(length) or b"{}")
         try:
             with lock:
+                w = branches[active]
                 if self.path == "/api/step":
-                    world.step(body.get("event"))
+                    w.step(body.get("event"))
                 elif self.path == "/api/undo":
-                    world.undo()
+                    w.undo()
                 elif self.path == "/api/reset":
-                    world.reset()
+                    w.reset()
+                elif self.path == "/api/branch/new":
+                    name = str(body.get("name") or "").strip()[:40]
+                    if not name or name in branches:
+                        return self.send(400, {"error": "이름이 비어 있거나 이미 있는 갈래예요"})
+                    branches[name] = w.fork(name, body.get("from_week", w.state["week"]))
+                    active = name
+                elif self.path == "/api/branch/switch":
+                    if body.get("name") not in branches:
+                        return self.send(404, {"error": "no such branch"})
+                    active = body["name"]
+                elif self.path == "/api/branch/delete":
+                    name = body.get("name")
+                    if name not in branches or len(branches) == 1:
+                        return self.send(400, {"error": "지울 수 없는 갈래예요"})
+                    branches.pop(name).delete()
+                    if active == name:
+                        active = next(iter(branches))
                 else:
                     return self.send(404, {"error": "not found"})
             self.send(200, self.everything())

@@ -24,6 +24,13 @@ The world as a book, and you are the author. Set up today's world, write an even
 6. **Code checks the AI**: unknown items, missing units and too-large weekly jumps are
    dropped or cut, and shown on screen.
 
+## Branches: compare two worlds
+
+A what-if needs something to compare with. Make a branch from any past week, give each
+branch a different event ("the Fed cuts rates" vs "the Fed holds rates"), and the
+"compare branches" tab shows the two stories side by side and every item that ended up
+different, sorted by the size of the gap. Each branch is saved in its own file in `saves/`.
+
 ## Run
 
 1. Put your OpenAI key in a file `what-if-world/.env`:

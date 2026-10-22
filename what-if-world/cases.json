@@ -2,51 +2,109 @@
   {
     "name": "1973 oil embargo",
     "event": "Arab oil producers cut exports to countries supporting Israel.",
-    "effects": "Oil price roughly quadrupled within a few months (about $3 to about $12 a barrel); fuel shortages and queues in the US; inflation and recession followed in many rich countries."
+    "effects": "Oil price roughly quadrupled within a few months (about $3 to about $12 a barrel); fuel shortages and queues in the US; inflation and recession followed in many rich countries.",
+    "kind": "event"
   },
   {
     "name": "1990 Iraq invades Kuwait",
     "event": "Iraq invades Kuwait; oil supply from both countries is cut off.",
-    "effects": "Oil price more than doubled in about two months (from under $20 to about $40 a barrel at the peak in October 1990), then fell back after the war started in January 1991."
+    "effects": "Oil price more than doubled in about two months (from under $20 to about $40 a barrel at the peak in October 1990), then fell back after the war started in January 1991.",
+    "kind": "event"
   },
   {
     "name": "1997 Asian financial crisis",
     "event": "Currency crisis spreads from Thailand to Indonesia and South Korea.",
-    "effects": "The Korean won lost about half its value against the dollar within weeks; Korea took an IMF rescue loan; unemployment rose sharply in 1998."
+    "effects": "The Korean won lost about half its value against the dollar within weeks; Korea took an IMF rescue loan; unemployment rose sharply in 1998.",
+    "kind": "event"
   },
   {
     "name": "2008 Lehman Brothers collapse",
     "event": "A large US investment bank goes bankrupt in a housing and credit crisis.",
-    "effects": "US stocks (S&P 500) fell about 57% from the 2007 peak to the March 2009 low; central banks cut rates to near zero; global recession."
+    "effects": "US stocks (S&P 500) fell about 57% from the 2007 peak to the March 2009 low; central banks cut rates to near zero; global recession.",
+    "kind": "event"
   },
   {
     "name": "2010-2011 food price spike",
     "event": "Drought and export bans push global grain prices up.",
-    "effects": "The FAO food price index reached a record in early 2011; high bread prices were one of the pressures behind the Arab Spring protests."
+    "effects": "The FAO food price index reached a record in early 2011; high bread prices were one of the pressures behind the Arab Spring protests.",
+    "kind": "event"
   },
   {
     "name": "2016 Brexit vote",
     "event": "The UK votes to leave the European Union.",
-    "effects": "The British pound fell about 8% against the dollar the next day, to a 31-year low."
+    "effects": "The British pound fell about 8% against the dollar the next day, to a 31-year low.",
+    "kind": "event"
   },
   {
     "name": "2020 COVID-19 shock",
     "event": "A pandemic and lockdowns stop much of the world economy.",
-    "effects": "US stocks fell about 34% in about one month (February to March 2020); unemployment jumped; central banks cut rates to near zero; oil prices collapsed."
+    "effects": "US stocks fell about 34% in about one month (February to March 2020); unemployment jumped; central banks cut rates to near zero; oil prices collapsed.",
+    "kind": "event"
   },
   {
     "name": "2021 Suez Canal blockage",
     "event": "The container ship Ever Given blocks the Suez Canal for six days.",
-    "effects": "Hundreds of ships queued; about 12% of world trade passes the canal; shipping delays lasted weeks after it reopened."
+    "effects": "Hundreds of ships queued; about 12% of world trade passes the canal; shipping delays lasted weeks after it reopened.",
+    "kind": "event"
   },
   {
     "name": "2022 Russia invades Ukraine",
     "event": "Full-scale invasion; sanctions on Russia.",
-    "effects": "Oil rose from under $100 to about $128 a barrel within two weeks; wheat prices rose sharply because Russia and Ukraine are big exporters; European gas prices hit records later in 2022; inflation rose in Europe."
+    "effects": "Oil rose from under $100 to about $128 a barrel within two weeks; wheat prices rose sharply because Russia and Ukraine are big exporters; European gas prices hit records later in 2022; inflation rose in Europe.",
+    "kind": "event"
   },
   {
     "name": "2026 Strait of Hormuz closure",
     "event": "After US and Israeli strikes on Iran, Iran announces it is closing the Strait of Hormuz (about 15 million barrels of crude a day normally pass).",
-    "effects": "Crude rose about 10% to near $80 a barrel on the first day; the closure lasted much longer than first expected; Fitch expected Brent at $100 to $110 from May to July 2026."
+    "effects": "Crude rose about 10% to near $80 a barrel on the first day; the closure lasted much longer than first expected; Fitch expected Brent at $100 to $110 from May to July 2026.",
+    "kind": "event"
+  },
+  {
+    "kind": "typical pattern",
+    "name": "Routine central bank rate change (0.25pp)",
+    "event": "A central bank moves its rate by 0.25 percentage points, mostly as markets expected.",
+    "effects": "Markets usually price it in beforehand; on the day stocks and the currency typically move by less than about 1 to 2%. A surprise or a change in future guidance moves markets more than the cut itself."
+  },
+  {
+    "kind": "event",
+    "name": "2013 taper tantrum",
+    "event": "The Fed hints it will slow its bond buying.",
+    "effects": "The US 10-year yield rose from about 1.6% to about 3% between May and September 2013; emerging market currencies fell sharply, the Indian rupee hit a record low in August 2013."
+  },
+  {
+    "kind": "event",
+    "name": "2022 fast Fed rate hikes",
+    "event": "The Fed raises rates from near zero to over 4% within about nine months to fight inflation.",
+    "effects": "US stocks (S&P 500) fell about 19% in 2022; the dollar reached a 20-year high in September 2022; many other currencies, including the yen and the won, weakened strongly."
+  },
+  {
+    "kind": "typical pattern",
+    "name": "Big tech partnership announcement",
+    "event": "A large tech company announces a partnership with a smaller company.",
+    "effects": "The smaller partner's share price often rises several percent, sometimes double digits, on the day; the large company and the wider market usually barely move. Effects on GDP or currencies are negligible."
+  },
+  {
+    "kind": "typical pattern",
+    "name": "Company earnings surprise",
+    "event": "A large company reports results far above or below expectations.",
+    "effects": "Its share price often moves about 5 to 10% in a day, sometimes more; suppliers and competitors move in sympathy by smaller amounts."
+  },
+  {
+    "kind": "event",
+    "name": "2016 US presidential election surprise",
+    "event": "An election result that markets did not expect.",
+    "effects": "US stock futures fell about 5% overnight, then stocks rallied within days; the Mexican peso fell more than 10% at one point."
+  },
+  {
+    "kind": "event",
+    "name": "2023 Silicon Valley Bank collapse",
+    "event": "A mid-sized US bank fails after a deposit run.",
+    "effects": "US regional bank shares fell sharply within days; regulators guaranteed deposits and the Fed opened an emergency lending facility; the wider crisis was contained within weeks."
+  },
+  {
+    "kind": "typical pattern",
+    "name": "Large street protests spreading nationwide",
+    "event": "Protests spread across a country and the government struggles to contain them (for example France's yellow vest protests, 2018-2019).",
+    "effects": "Government approval falls; the government often makes concessions such as cancelling a tax rise; retail and tourism suffer locally; national stock and currency moves are usually small unless the government is at risk of falling."
   }
 ]

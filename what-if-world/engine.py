@@ -17,6 +17,7 @@ touches the world.
 """
 
 import copy
+import hashlib
 import json
 import os
 import re
@@ -24,7 +25,7 @@ import urllib.request
 from datetime import date, timedelta
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SAVE = os.path.join(HERE, "saves", "current.json")
+SAVES = os.path.join(HERE, "saves")
 MODEL = os.environ.get("WHATIF_MODEL", "gpt-4o-mini")
 LANG = os.environ.get("WHATIF_LANG", "Korean")
 HISTORY_WEEKS = 8        # past weeks of story the game master reads
@@ -93,7 +94,12 @@ How to think:
 6. Every change must say what caused it in "caused_by": "event" (the author's event this week),
    the "ref" of another change in this reply, or the id of a change from an earlier week
    (ids look like "w3.c2"). Use earlier ids to continue chains over weeks.
-7. Write label, interpretation, why, action, reason and narrative in {lang}.
+7. Make items concrete and measurable. A company is tracked by its share price ("Naver share price", "%"),
+   a group of people by a count, a route or law by a status. Avoid vague items like "expectations".
+8. An analog must be similar in kind and size. Do not compare a routine rate decision or a company
+   announcement with a financial crisis or a war. Typical patterns in the list are fine to use.
+9. For the United States, "currency" means the dollar index (the dollar against other currencies).
+10. Write label, interpretation, why, action, reason and narrative in {lang}.
 
 Reply with JSON only:
 {{
@@ -111,17 +117,65 @@ Reply with JSON only:
 }}"""
 
 
+def branch_path(name):
+    # keep letters of any language (Korean too) and add a short hash so names never collide
+    safe = re.sub(r"[^\w-]+", "_", str(name)).strip("_")[:30] or "branch"
+    tag = hashlib.md5(str(name).encode("utf-8")).hexdigest()[:6]
+    return os.path.join(SAVES, f"branch_{safe}_{tag}.json")
+
+
+def list_branches():
+    """Names of saved branches (one file per branch). Moves an old single save into 'main'."""
+    os.makedirs(SAVES, exist_ok=True)
+    old = os.path.join(SAVES, "current.json")
+    if os.path.exists(old) and not os.path.exists(branch_path("main")):
+        with open(old, encoding="utf-8") as f:
+            saved = json.load(f)
+        if "items" in saved.get("state", {}):
+            saved["name"] = "main"
+            with open(branch_path("main"), "w", encoding="utf-8") as f:
+                json.dump(saved, f, ensure_ascii=False)
+        os.rename(old, os.path.join(SAVES, "current_old.json"))
+    names = []
+    for fn in sorted(os.listdir(SAVES)):
+        if fn.startswith("branch_") and fn.endswith(".json"):
+            with open(os.path.join(SAVES, fn), encoding="utf-8") as f:
+                names.append(json.load(f).get("name", fn[7:-5]))
+    return names
+
+
 class World:
-    def __init__(self):
+    """One branch of the world: its own state and its own history."""
+
+    def __init__(self, name="main"):
+        self.name = name
         self.cfg = load_json("world.json")
         self.cases = load_json("cases.json")
-        if os.path.exists(SAVE):
-            with open(SAVE, encoding="utf-8") as f:
+        path = branch_path(name)
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
                 saved = json.load(f)
-            if "items" in saved.get("state", {}):
-                self.state, self.history = saved["state"], saved["history"]
-                return
-        self.reset()
+            self.state, self.history = saved["state"], saved["history"]
+            self.parent = saved.get("parent")
+        else:
+            self.parent = None
+            self.reset()
+
+    def fork(self, new_name, from_week):
+        """A new branch that shares this branch's history up to from_week."""
+        from_week = max(0, min(int(from_week), self.state["week"]))
+        child = World.__new__(World)
+        child.name, child.cfg, child.cases = new_name, self.cfg, self.cases
+        child.history = copy.deepcopy(self.history[:from_week])
+        child.state = copy.deepcopy(child.history[-1]["state"]) if child.history else child.fresh_state()
+        child.parent = {"branch": self.name, "week": from_week}
+        child.save()
+        return child
+
+    def delete(self):
+        path = branch_path(self.name)
+        if os.path.exists(path):
+            os.remove(path)
 
     # ---------- state ----------
     def fresh_state(self):
@@ -151,9 +205,10 @@ class World:
         self.save()
 
     def save(self):
-        os.makedirs(os.path.dirname(SAVE), exist_ok=True)
-        with open(SAVE, "w", encoding="utf-8") as f:
-            json.dump({"state": self.state, "history": self.history}, f, ensure_ascii=False)
+        os.makedirs(SAVES, exist_ok=True)
+        with open(branch_path(self.name), "w", encoding="utf-8") as f:
+            json.dump({"name": self.name, "parent": self.parent,
+                       "state": self.state, "history": self.history}, f, ensure_ascii=False)
 
     # ---------- prompt ----------
     def build_prompt(self, event):
@@ -193,7 +248,7 @@ class World:
             L.append(f"{c['id']}: {c['scope']} {c['name']} {what} ({c['reason']})")
 
         L += ["", "Historical cases:"]
-        L += [f"- {c['name']}: {c['event']} -> {c['effects']}" for c in self.cases]
+        L += [f"- [{c.get('kind', 'event')}] {c['name']}: {c['event']} -> {c['effects']}" for c in self.cases]
         L += ["", f"New event this week: {event}" if event else
               "No new event this week. Continue from what already happened."]
         return "\n".join(L)

@@ -12,7 +12,7 @@
     "unemployment":  {"label": "Unemployment",          "unit": "pp", "max_week": 2},
     "policy_rate":   {"label": "Central bank rate",     "unit": "pp", "max_week": 2},
     "stocks":        {"label": "Stock market",          "unit": "%",  "max_week": 30},
-    "currency":      {"label": "Currency vs US dollar", "unit": "%",  "max_week": 30},
+    "currency":      {"label": "Currency vs US dollar (United States: dollar index)", "unit": "%",  "max_week": 30},
     "approval":      {"label": "Government approval",   "unit": "pp", "max_week": 15},
     "food_prices":   {"label": "Food prices",           "unit": "%",  "max_week": 30},
     "fuel_prices":   {"label": "Fuel prices",           "unit": "%",  "max_week": 50}
