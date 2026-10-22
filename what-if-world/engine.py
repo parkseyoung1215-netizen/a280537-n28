@@ -106,7 +106,10 @@ How to think:
     (for example TSMC, Samsung Electronics, SK hynix for chips). Some companies can gain
     (competitors, substitutes); say so when it is the case.
 12. Say how sure you are. "confidence" is "high" when the event is close to a case in the list,
-    "medium" when only partly similar, "low" when history has no real precedent. For "low", give the
+    "medium" when only partly similar, "low" when history has no real precedent.
+    Always "low" for a direct military conflict between major powers, or a sudden stop of something
+    the world cannot replace (for example advanced chips from Taiwan), even if one part of it looks
+    like a past case. For "low", give the
     plausible range in "uncertainty" (for example "US stocks could fall 2% or 15%") and pick a value
     in the middle of that range.
 13. Write label, interpretation, why, action, reason, uncertainty and narrative in {lang}.
@@ -373,6 +376,16 @@ class World:
             (it.get("scope_label") for it in items.values() if it["scope"] == scope and it.get("scope_label")), scope)
         return item_id
 
+    CONF_RANK = {"low": 0, "medium": 1, "high": 2}
+    CONF_CARRY_WEEKS = 4
+
+    def carried_confidence(self, own):
+        """A week cannot be more certain than the uncertain weeks it builds on.
+        Confidence is the lowest of this week's and the last few weeks'."""
+        levels = [own] + [h.get("confidence") for h in self.history[-self.CONF_CARRY_WEEKS:]]
+        levels = [c for c in levels if c in self.CONF_RANK]
+        return min(levels, key=self.CONF_RANK.get) if levels else ""
+
     def apply(self, changes):
         items = self.state["items"]
         for c in changes:
@@ -409,7 +422,8 @@ class World:
             "changes": changes,
             "dropped": dropped,
             "narrative": raw.get("narrative", ""),
-            "confidence": raw.get("confidence") if raw.get("confidence") in ("high", "medium", "low") else "",
+            "confidence": self.carried_confidence(raw.get("confidence")),
+            "confidence_model": raw.get("confidence") if raw.get("confidence") in ("high", "medium", "low") else "",
             "uncertainty": str(raw.get("uncertainty") or "")[:400],
             "state": copy.deepcopy(self.state),
         }

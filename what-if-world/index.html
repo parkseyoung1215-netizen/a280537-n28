@@ -227,7 +227,9 @@ const CONF = {high: ["확신 높음", "conf-high"], medium: ["확신 중간", "c
 function confLine(h) {
   if (!h.confidence) return "";
   const [t, c] = CONF[h.confidence];
-  return `<div class="conf ${c}"><b>${t}</b>${h.uncertainty ? ` — ${esc(h.uncertainty)}` : ""}</div>`;
+  const carried = h.confidence_model && h.confidence_model !== h.confidence
+    ? ` <span class="small">(이번 주만 보면 ${CONF[h.confidence_model][0]}이지만, 앞선 주의 불확실성을 이어받음)</span>` : "";
+  return `<div class="conf ${c}"><b>${t}</b>${carried}${h.uncertainty ? ` — ${esc(h.uncertainty)}` : ""}</div>`;
 }
 
 // ---------- views ----------
