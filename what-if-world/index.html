@@ -78,6 +78,10 @@
   .chart { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
   .chart h4 { margin: 0 0 6px; font-size: 14px; }
   svg text { fill: var(--muted); font-size: 11px; }
+  .conf { font-size: 13px; border-radius: 8px; padding: 6px 10px; margin: 6px 0 8px; border: 1px solid var(--line); color: var(--muted); }
+  .conf b { color: var(--ink); }
+  .conf-low { border-color: var(--up); background: color-mix(in srgb, var(--up) 10%, transparent); }
+  .conf-low b { color: var(--up); }
   .branchbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 0 24px 8px; font-size: 14px; }
   @media (max-width: 900px) { .branchbar { padding: 0 16px 8px; } }
   select, .branchbar input { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit;
@@ -219,6 +223,13 @@ function weekTree(h, map, kids) {
   return html ? `<ul class="tree">${html}</ul>` : `<p class="small">달라진 것 없음</p>`;
 }
 
+const CONF = {high: ["확신 높음", "conf-high"], medium: ["확신 중간", "conf-mid"], low: ["확신 낮음 · 전례 없음", "conf-low"]};
+function confLine(h) {
+  if (!h.confidence) return "";
+  const [t, c] = CONF[h.confidence];
+  return `<div class="conf ${c}"><b>${t}</b>${h.uncertainty ? ` — ${esc(h.uncertainty)}` : ""}</div>`;
+}
+
 // ---------- views ----------
 function render() {
   const {state, history} = data;
@@ -229,6 +240,7 @@ function render() {
       <h3>${h.week}주 차 · ${h.date}</h3>
       ${h.event ? `<div class="event">사건: ${esc(h.event)}</div>` : ""}
       <div class="narrative">${esc(h.narrative)}</div>
+      ${confLine(h)}
       ${weekTree(h, map, kids)}
       <details><summary>해석 · 참고한 과거 사례 · 각자의 대응</summary>
         <p class="small">${esc(h.interpretation)}</p>
@@ -321,7 +333,7 @@ async function viewCompare() {
   let split = 0;
   while (split < A.history.length && split < B.history.length &&
          A.history[split].event === B.history[split].event && A.history[split].narrative === B.history[split].narrative) split++;
-  const since = (X) => X.history.slice(split).map(h => `<li>${h.week}주 차${h.event ? ` · <b>${esc(h.event)}</b>` : ""}<br>${esc(h.narrative)}</li>`).join("") || "<li>갈라진 뒤 진행한 주가 없어요</li>";
+  const since = (X) => X.history.slice(split).map(h => `<li>${h.week}주 차${h.event ? ` · <b>${esc(h.event)}</b>` : ""}<br>${esc(h.narrative)}${confLine(h)}</li>`).join("") || "<li>갈라진 뒤 진행한 주가 없어요</li>";
   const ids = new Set([...Object.keys(A.state.items), ...Object.keys(B.state.items)]);
   const rows = [];
   for (const id of ids) {

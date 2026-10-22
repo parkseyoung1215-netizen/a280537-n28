@@ -99,7 +99,17 @@ How to think:
 8. An analog must be similar in kind and size. Do not compare a routine rate decision or a company
    announcement with a financial crisis or a war. Typical patterns in the list are fine to use.
 9. For the United States, "currency" means the dollar index (the dollar against other currencies).
-10. Write label, interpretation, why, action, reason and narrative in {lang}.
+10. A country that is not in the basic list (for example Taiwan, France, Germany) can use the same
+    basic indicators: write "item": "<country id>.<basic key>" (for example "taiwan.stocks",
+    "france.approval") and add "scope_label". The item is created automatically.
+11. When an industry is hit, track the share prices of the two to four companies that matter most
+    (for example TSMC, Samsung Electronics, SK hynix for chips). Some companies can gain
+    (competitors, substitutes); say so when it is the case.
+12. Say how sure you are. "confidence" is "high" when the event is close to a case in the list,
+    "medium" when only partly similar, "low" when history has no real precedent. For "low", give the
+    plausible range in "uncertainty" (for example "US stocks could fall 2% or 15%") and pick a value
+    in the middle of that range.
+13. Write label, interpretation, why, action, reason, uncertainty and narrative in {lang}.
 
 Reply with JSON only:
 {{
@@ -108,12 +118,15 @@ Reply with JSON only:
   "actions": [{{"actor": "who", "action": "what they do this week"}}],
   "changes": [
     {{"ref": "c1", "item": "existing item id", "change": 12.0, "reason": "short", "caused_by": ["event"]}},
+    {{"ref": "c4", "item": "taiwan.stocks", "scope_label": "Taiwan in {lang}", "change": -8.0, "reason": "short", "caused_by": ["event"]}},
     {{"ref": "c2", "new_item": {{"scope": "Egypt", "scope_label": "Egypt in {lang}", "name": "Bread subsidy cost", "label": "label in {lang}", "unit": "%"}},
       "change": 20.0, "reason": "short", "caused_by": ["c1"]}},
     {{"ref": "c3", "new_item": {{"scope": "Strait of Hormuz", "scope_label": "in {lang}", "name": "Tanker traffic", "label": "label in {lang}", "unit": "status"}},
       "status": "short new state", "reason": "short", "caused_by": ["event"]}}
   ],
-  "narrative": "3 to 6 sentences: what happened in the world this week"
+  "narrative": "3 to 6 sentences: what happened in the world this week",
+  "confidence": "high | medium | low",
+  "uncertainty": "why, and the plausible range when confidence is low"
 }}"""
 
 
@@ -260,7 +273,7 @@ class World:
                 return i
         return None
 
-    def check(self, raw, week):
+    def check(self, raw, week, has_event=True):
         """Turn the model's proposals into safe changes. Returns (changes, dropped)."""
         items = self.state["items"]
         ok, dropped, refmap, new_count = [], [], {}, 0
@@ -271,8 +284,13 @@ class World:
             # which item?
             item_id = ch.get("item")
             new_spec = ch.get("new_item")
+            if isinstance(new_spec, dict) and slug(new_spec.get("name")) in self.cfg["country_indicators"]:
+                # new_item that is really a basic indicator for a new country
+                item_id = f"{slug(new_spec.get('scope'))}.{slug(new_spec.get('name'))}"
+                ch = {**ch, "scope_label": ch.get("scope_label") or new_spec.get("scope_label"),
+                      "_scope": new_spec.get("scope")}
             if item_id not in items:
-                item_id = None
+                item_id = self.basic_for_new_country(item_id, ch, week) if item_id else None
             if item_id is None and isinstance(new_spec, dict):
                 scope = str(new_spec.get("scope") or "").strip()[:40]
                 name = str(new_spec.get("name") or "").strip()[:60]
@@ -329,13 +347,31 @@ class World:
             for x in raw_causes:
                 x = str(x)
                 if x == "event":
-                    causes.append("event")
+                    if has_event:
+                        causes.append("event")
                 elif x in refmap and refmap[x] != c["id"]:
                     causes.append(refmap[x])
                 elif x in known_ids:
                     causes.append(x)
             c["caused_by"] = causes
         return ok, dropped
+
+    def basic_for_new_country(self, item_id, ch, week):
+        """'taiwan.stocks' for a country without basic indicators: create that indicator."""
+        if not isinstance(item_id, str) or item_id.count(".") != 1:
+            return None
+        country, key = item_id.split(".")
+        spec = self.cfg["country_indicators"].get(key)
+        if not spec or not country or country == "global" or len(country) > 40:
+            return None
+        label = str(ch.get("scope_label") or "").strip()[:40]
+        scope = next((it["scope"] for it in self.state["items"].values() if slug(it["scope"]) == country),
+                     str(ch.get("_scope") or "").strip()[:40] or country.replace("_", " ").title())
+        items = self.state["items"]
+        items[item_id] = self.make_item(scope, key, spec["label"], spec["unit"], True, spec.get("max_week"), week)
+        items[item_id]["scope_label"] = label or next(
+            (it.get("scope_label") for it in items.values() if it["scope"] == scope and it.get("scope_label")), scope)
+        return item_id
 
     def apply(self, changes):
         items = self.state["items"]
@@ -356,7 +392,7 @@ class World:
         raw = ask(SYSTEM.format(lang=LANG), self.build_prompt(event))
         before = copy.deepcopy(self.state)
         try:
-            changes, dropped = self.check(raw, week)
+            changes, dropped = self.check(raw, week, has_event=bool(event))
             self.apply(changes)
         except Exception:
             self.state = before
@@ -373,6 +409,8 @@ class World:
             "changes": changes,
             "dropped": dropped,
             "narrative": raw.get("narrative", ""),
+            "confidence": raw.get("confidence") if raw.get("confidence") in ("high", "medium", "low") else "",
+            "uncertainty": str(raw.get("uncertainty") or "")[:400],
             "state": copy.deepcopy(self.state),
         }
         self.history.append(entry)

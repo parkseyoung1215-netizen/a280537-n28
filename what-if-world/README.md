@@ -24,6 +24,13 @@ The world as a book, and you are the author. Set up today's world, write an even
 6. **Code checks the AI**: unknown items, missing units and too-large weekly jumps are
    dropped or cut, and shown on screen.
 
+## How sure is it?
+
+Every week comes with a confidence level: high when the event is close to a case in history,
+low when there is no real precedent (a blockade of Taiwan, for example). Low-confidence weeks
+show the plausible range and are highlighted on screen, so a single number is not mistaken
+for a forecast.
+
 ## Branches: compare two worlds
 
 A what-if needs something to compare with. Make a branch from any past week, give each
