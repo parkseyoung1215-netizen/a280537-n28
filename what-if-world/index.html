@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What-If World</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e3e1da;
+    --up: #c2410c; --down: #1d4ed8; --accent: #1d1d1b; --soft: #efede6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141413; --panel: #1d1d1b; --ink: #ecebe6; --muted: #9a998f; --line: #2f2e2a;
+            --up: #fb923c; --down: #60a5fa; --accent: #ecebe6; --soft: #26251f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif; }
+  header { padding: 20px 24px 8px; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.02em; }
+  .when { color: var(--muted); font-variant-numeric: tabular-nums; }
+  main { display: grid; grid-template-columns: minmax(320px, 1fr) minmax(380px, 1.25fr); gap: 16px; padding: 8px 24px 32px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 8px 16px 24px; } header { padding: 16px; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  textarea { width: 100%; min-height: 78px; resize: vertical; border: 1px solid var(--line); border-radius: 8px;
+             padding: 10px 12px; font: inherit; background: var(--bg); color: var(--ink); }
+  .buttons { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  button { border: 1px solid var(--line); background: var(--soft); color: var(--ink); border-radius: 8px;
+           padding: 8px 14px; font: inherit; cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: wait; }
+  .status { color: var(--muted); font-size: 13px; margin-top: 8px; min-height: 20px; }
+  .status.error { color: var(--up); }
+  .examples { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .examples span { font-size: 12px; color: var(--muted); border: 1px dashed var(--line); border-radius: 999px;
+                   padding: 2px 10px; cursor: pointer; }
+  .week { border-top: 1px solid var(--line); padding: 14px 0; }
+  .week:first-child { border-top: 0; }
+  .week h3 { margin: 0 0 4px; font-size: 14px; color: var(--muted); font-weight: 600; }
+  .event { font-weight: 600; margin: 2px 0 6px; }
+  .narrative { margin: 4px 0 8px; }
+  details { margin-top: 6px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  ul { margin: 6px 0; padding-left: 18px; }
+  li { margin: 2px 0; }
+  .chg-up { color: var(--up); font-variant-numeric: tabular-nums; }
+  .chg-down { color: var(--down); font-variant-numeric: tabular-nums; }
+  .small { font-size: 13px; color: var(--muted); }
+  .global { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+  .tile.sel, td.sel { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .tile .lab { font-size: 12px; color: var(--muted); }
+  .tile .val { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px 6px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--panel); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  td.cell { cursor: pointer; }
+  .zero { color: var(--muted); opacity: .6; }
+  .chart { margin-top: 14px; }
+  .chart h4 { margin: 0 0 6px; font-size: 14px; }
+  svg text { fill: var(--muted); font-size: 11px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>What-If World</h1>
+  <div class="when" id="when"></div>
+</header>
+<main>
+  <section>
+    <div class="panel">
+      <h2>작가의 손</h2>
+      <textarea id="event" placeholder="사건을 입력하세요. 비워두면 사건 없이 한 주가 흘러가요."></textarea>
+      <div class="examples" id="examples"></div>
+      <div class="buttons">
+        <button class="primary" id="step">한 주 진행</button>
+        <button id="undo">되돌리기</button>
+        <button id="reset">처음부터</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>세계의 이야기</h2>
+      <div id="timeline"><p class="small">아직 아무 일도 일어나지 않았어요.</p></div>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>세계 지표 <span class="small">(시작 시점 대비 변화, 칸을 누르면 그래프)</span></h2>
+    <div class="global" id="global"></div>
+    <div class="tablewrap"><table id="table"></table></div>
+    <div class="chart" id="chart"></div>
+  </section>
+</main>
+<script>
+const KO = {
+  gdp_growth: "성장률", inflation: "물가상승률", unemployment: "실업률", policy_rate: "기준금리",
+  stocks: "주가", currency: "통화가치", approval: "정부 지지율", food_prices: "식료품값", fuel_prices: "연료값",
+  oil: "유가", gas: "천연가스", wheat: "밀", gold: "금", shipping_cost: "해운 운임", fear: "시장 공포",
+  "United States": "미국", "China": "중국", "European Union": "EU", "United Kingdom": "영국", "Japan": "일본",
+  "South Korea": "한국", "India": "인도", "Russia": "러시아", "Ukraine": "우크라이나", "Israel": "이스라엘",
+  "Iran": "이란", "Saudi Arabia": "사우디", "Brazil": "브라질", "global": "세계"
+};
+const EXAMPLES = ["이란이 호르무즈 해협을 다시 완전히 막는다", "한국은행이 기준금리를 2%p 올린다",
+                  "러시아와 우크라이나가 휴전에 합의한다", "전 세계 밀 수확이 가뭄으로 30% 줄어든다"];
+const ko = k => KO[k] || k;
+let data = null, sel = {scope: "global", ind: "oil"};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function fmt(v, unit) {
+  const s = (v > 0 ? "+" : "") + v.toFixed(1) + (unit === "pp" ? "%p" : "%");
+  const cls = Math.abs(v) < 0.05 ? "zero" : v > 0 ? "chg-up" : "chg-down";
+  return `<span class="${cls}">${Math.abs(v) < 0.05 ? "0" : s}</span>`;
+}
+
+async function call(path, body) {
+  const r = await fetch(path, {method: body ? "POST" : "GET",
+    headers: {"Content-Type": "application/json"}, body: body ? JSON.stringify(body) : undefined});
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+function render() {
+  const {config, state, history} = data;
+  $("when").textContent = `${state.date} · ${state.week}주 차`;
+  // global tiles
+  $("global").innerHTML = Object.entries(config.global_indicators).map(([k, s]) =>
+    `<div class="tile ${sel.scope==="global"&&sel.ind===k?"sel":""}" data-scope="global" data-ind="${k}">
+       <div class="lab">${ko(k)}</div><div class="val">${fmt(state.global[k], s.unit)}</div></div>`).join("");
+  // country table
+  const inds = Object.keys(config.country_indicators);
+  $("table").innerHTML = `<tr><th>나라</th>${inds.map(k => `<th>${ko(k)}</th>`).join("")}</tr>` +
+    config.countries.map(c => `<tr><td>${ko(c)}</td>${inds.map(k =>
+      `<td class="cell ${sel.scope===c&&sel.ind===k?"sel":""}" data-scope="${esc(c)}" data-ind="${k}">${fmt(state.countries[c][k], config.country_indicators[k].unit)}</td>`
+    ).join("")}</tr>`).join("");
+  document.querySelectorAll("[data-ind]").forEach(el => el.onclick = () => {
+    sel = {scope: el.dataset.scope, ind: el.dataset.ind}; render(); });
+  // timeline
+  $("timeline").innerHTML = history.length ? [...history].reverse().map(h => `
+    <div class="week">
+      <h3>${h.week}주 차 · ${h.date}</h3>
+      ${h.event ? `<div class="event">사건: ${esc(h.event)}</div>` : ""}
+      <div class="narrative">${esc(h.narrative)}</div>
+      ${h.changes.length ? `<ul>${h.changes.map(c => `<li>${ko(c.scope)} ${ko(c.indicator)} ${fmt(c.change, c.unit)}${c.capped ? " <span class='small'>(주간 한도로 잘림)</span>" : ""} <span class="small">${esc(c.reason)}</span></li>`).join("")}</ul>` : ""}
+      <details><summary>해석 · 참고한 과거 사례 · 각자의 대응</summary>
+        <p class="small">${esc(h.interpretation)}</p>
+        ${h.analogs.length ? `<ul>${h.analogs.map(a => `<li><b>${esc(a.case)}</b>${a.from_list === false ? " <span class='small'>(목록 밖, AI 기억 · 확인 필요)</span>" : ""}: ${esc(a.why)}</li>`).join("")}</ul>` : "<p class='small'>참고한 과거 사례 없음</p>"}
+        ${h.actions.length ? `<ul>${h.actions.map(a => `<li><b>${esc(a.actor)}</b>: ${esc(a.action)}</li>`).join("")}</ul>` : ""}
+        ${h.dropped && h.dropped.length ? `<p class="small">버린 변화 ${h.dropped.length}개 (잘못된 나라/지표)</p>` : ""}
+      </details>
+    </div>`).join("") : `<p class="small">아직 아무 일도 일어나지 않았어요.</p>`;
+  renderChart();
+}
+
+function renderChart() {
+  const {config, history} = data;
+  const spec = sel.scope === "global" ? config.global_indicators[sel.ind] : config.country_indicators[sel.ind];
+  const pts = [0, ...history.map(h => sel.scope === "global" ? h.state.global[sel.ind] : h.state.countries[sel.scope][sel.ind])];
+  const W = 560, H = 180, P = 32;
+  const lo = Math.min(0, ...pts), hi = Math.max(0, ...pts), span = (hi - lo) || 1;
+  const x = i => P + (W - 2*P) * (pts.length === 1 ? 0 : i / (pts.length - 1));
+  const y = v => H - P + 8 - (H - 2*P) * (v - lo) / span;
+  const path = pts.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  $("chart").innerHTML = `<h4>${ko(sel.scope)} · ${ko(sel.ind)}</h4>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="chart">
+      <line x1="${P}" x2="${W-P}" y1="${y(0)}" y2="${y(0)}" stroke="currentColor" opacity=".2"/>
+      <path d="${path}" fill="none" stroke="currentColor" stroke-width="2"/>
+      ${pts.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="currentColor"><title>${i}주 차: ${v.toFixed(1)}</title></circle>`).join("")}
+      <text x="${P}" y="${H-6}">0주</text><text x="${W-P}" y="${H-6}" text-anchor="end">${pts.length-1}주</text>
+      <text x="4" y="${y(hi)+4}">${hi.toFixed(1)}</text><text x="4" y="${y(lo)+4}">${lo.toFixed(1)}</text>
+    </svg><div class="small">단위: ${spec.unit === "pp" ? "%p (퍼센트포인트)" : "% (시작 대비)"}</div>`;
+}
+
+async function act(path, body, msg) {
+  document.querySelectorAll("button").forEach(b => b.disabled = true);
+  $("status").className = "status"; $("status").textContent = msg;
+  try { data = await call(path, body); render(); $("status").textContent = ""; if (path === "/api/step") $("event").value = ""; }
+  catch (e) { $("status").className = "status error"; $("status").textContent = "오류: " + e.message; }
+  finally { document.querySelectorAll("button").forEach(b => b.disabled = false); }
+}
+
+$("examples").innerHTML = EXAMPLES.map(e => `<span>${e}</span>`).join("");
+document.querySelectorAll("#examples span").forEach(s => s.onclick = () => $("event").value = s.textContent);
+$("step").onclick = () => act("/api/step", {event: $("event").value}, "세계가 반응하는 중… (10~30초)");
+$("undo").onclick = () => act("/api/undo", {}, "되돌리는 중…");
+$("reset").onclick = () => { if (confirmReset()) act("/api/reset", {}, "처음으로 돌아가는 중…"); };
+function confirmReset() { return $("reset").dataset.armed === "1" ? true : ($("reset").dataset.armed = "1", $("reset").textContent = "한 번 더 누르면 초기화", setTimeout(() => { $("reset").dataset.armed = ""; $("reset").textContent = "처음부터"; }, 3000), false); }
+call("/api/world").then(d => { data = d; render(); }).catch(e => $("status").textContent = "오류: " + e.message);
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "start_date": "2026-10-22",
+  "about": "Every number starts at 0 = 'no change from today'. The simulation tracks how far the world moves away from today, so no starting levels need to be guessed.",
+  "context": [
+    "Edit this list to tell the game master what the world looks like today. The AI model may not know recent events.",
+    "Since March 2026 shipping through the Strait of Hormuz has been disrupted after US and Israeli strikes on Iran; oil prices rose sharply. Check the current status and update this line."
+  ],
+  "countries": ["United States", "China", "European Union", "United Kingdom", "Japan", "South Korea", "India", "Russia", "Ukraine", "Israel", "Iran", "Saudi Arabia", "Brazil"],
+  "country_indicators": {
+    "gdp_growth":    {"label": "GDP growth",            "unit": "pp", "max_week": 3},
+    "inflation":     {"label": "Inflation",             "unit": "pp", "max_week": 3},
+    "unemployment":  {"label": "Unemployment",          "unit": "pp", "max_week": 2},
+    "policy_rate":   {"label": "Central bank rate",     "unit": "pp", "max_week": 2},
+    "stocks":        {"label": "Stock market",          "unit": "%",  "max_week": 30},
+    "currency":      {"label": "Currency vs US dollar", "unit": "%",  "max_week": 30},
+    "approval":      {"label": "Government approval",   "unit": "pp", "max_week": 15},
+    "food_prices":   {"label": "Food prices",           "unit": "%",  "max_week": 30},
+    "fuel_prices":   {"label": "Fuel prices",           "unit": "%",  "max_week": 50}
+  },
+  "global_indicators": {
+    "oil":           {"label": "Oil price",             "unit": "%",  "max_week": 60},
+    "gas":           {"label": "Natural gas price",     "unit": "%",  "max_week": 80},
+    "wheat":         {"label": "Wheat price",           "unit": "%",  "max_week": 50},
+    "gold":          {"label": "Gold price",            "unit": "%",  "max_week": 20},
+    "shipping_cost": {"label": "Shipping cost",         "unit": "%",  "max_week": 100},
+    "fear":          {"label": "Market fear (VIX)",     "unit": "%",  "max_week": 150}
+  }
+}

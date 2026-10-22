@@ -1,0 +1,52 @@
+[
+  {
+    "name": "1973 oil embargo",
+    "event": "Arab oil producers cut exports to countries supporting Israel.",
+    "effects": "Oil price roughly quadrupled within a few months (about $3 to about $12 a barrel); fuel shortages and queues in the US; inflation and recession followed in many rich countries."
+  },
+  {
+    "name": "1990 Iraq invades Kuwait",
+    "event": "Iraq invades Kuwait; oil supply from both countries is cut off.",
+    "effects": "Oil price more than doubled in about two months (from under $20 to about $40 a barrel at the peak in October 1990), then fell back after the war started in January 1991."
+  },
+  {
+    "name": "1997 Asian financial crisis",
+    "event": "Currency crisis spreads from Thailand to Indonesia and South Korea.",
+    "effects": "The Korean won lost about half its value against the dollar within weeks; Korea took an IMF rescue loan; unemployment rose sharply in 1998."
+  },
+  {
+    "name": "2008 Lehman Brothers collapse",
+    "event": "A large US investment bank goes bankrupt in a housing and credit crisis.",
+    "effects": "US stocks (S&P 500) fell about 57% from the 2007 peak to the March 2009 low; central banks cut rates to near zero; global recession."
+  },
+  {
+    "name": "2010-2011 food price spike",
+    "event": "Drought and export bans push global grain prices up.",
+    "effects": "The FAO food price index reached a record in early 2011; high bread prices were one of the pressures behind the Arab Spring protests."
+  },
+  {
+    "name": "2016 Brexit vote",
+    "event": "The UK votes to leave the European Union.",
+    "effects": "The British pound fell about 8% against the dollar the next day, to a 31-year low."
+  },
+  {
+    "name": "2020 COVID-19 shock",
+    "event": "A pandemic and lockdowns stop much of the world economy.",
+    "effects": "US stocks fell about 34% in about one month (February to March 2020); unemployment jumped; central banks cut rates to near zero; oil prices collapsed."
+  },
+  {
+    "name": "2021 Suez Canal blockage",
+    "event": "The container ship Ever Given blocks the Suez Canal for six days.",
+    "effects": "Hundreds of ships queued; about 12% of world trade passes the canal; shipping delays lasted weeks after it reopened."
+  },
+  {
+    "name": "2022 Russia invades Ukraine",
+    "event": "Full-scale invasion; sanctions on Russia.",
+    "effects": "Oil rose from under $100 to about $128 a barrel within two weeks; wheat prices rose sharply because Russia and Ukraine are big exporters; European gas prices hit records later in 2022; inflation rose in Europe."
+  },
+  {
+    "name": "2026 Strait of Hormuz closure",
+    "event": "After US and Israeli strikes on Iran, Iran announces it is closing the Strait of Hormuz (about 15 million barrels of crude a day normally pass).",
+    "effects": "Crude rose about 10% to near $80 a barrel on the first day; the closure lasted much longer than first expected; Fitch expected Brent at $100 to $110 from May to July 2026."
+  }
+]
