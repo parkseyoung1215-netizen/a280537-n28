@@ -209,6 +209,10 @@ class World:
             child.state = copy.deepcopy(self.state)  # includes expectations set since the last week
         else:
             child.state = copy.deepcopy(child.history[-1]["state"]) if child.history else child.fresh_state()
+            # expectations the author added after that week, before the next one ran
+            nxt = self.history[from_week] if from_week < len(self.history) else None
+            if nxt and "expectations_before" in nxt:
+                child.state["expectations"] = copy.deepcopy(nxt["expectations_before"])
         child.state.setdefault("expectations", {})
         child.parent = {"branch": self.name, "week": from_week}
         child.save()
