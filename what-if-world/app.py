@@ -17,7 +17,7 @@ from urllib.parse import parse_qs, urlparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from engine import HERE, SAVES, World, list_branches, suggest_outcomes
+from engine import HERE, SAVES, World, list_branches, load_today, suggest_outcomes
 
 PORT = int(os.environ.get("WHATIF_PORT", "8000"))
 lock = Lock()  # one change at a time
@@ -108,7 +108,8 @@ class Handler(BaseHTTPRequestHandler):
     def everything(self):
         w = branches[active]
         return {"config": w.cfg, "active": active, "branches": branch_info(),
-                "state": w.state, "history": w.history, "questions": load_questions()[-20:]}
+                "state": w.state, "history": w.history, "questions": load_questions()[-20:],
+                "today": load_today()}
 
     def do_GET(self):
         url = urlparse(self.path)

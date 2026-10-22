@@ -12,6 +12,18 @@ replace them with real numbers if you have them), runs one world per outcome at 
 and shows them side by side with the things that differ most between them. Underneath, each
 outcome is its own branch with its own market expectation, so everything below still applies.
 
+## Same-day mode and today's news
+
+The world starts on the day you open the app. Questions can run in one-trading-day steps
+("how would markets react on the day of the Fed decision?") or in weeks. All numbers in a
+question are changes since the moment the question was asked, and each question is saved
+with the time it was asked, so a prediction made before an event can be compared with what
+really happened.
+
+Language models do not know recent news, so the app reads `today.json` (latest news and
+market data with sources) fresh at every step. A daily scheduled task fills it; you can also
+add lines yourself under "today's world situation".
+
 ## How it works
 
 1. **The world is a growing list of things that can change.** It starts with basic

@@ -151,6 +151,20 @@ Reply with JSON only:
 Use "expectation_match": null when the event is not one of the listed outcomes."""
 
 
+TODAY = os.path.join(HERE, "today.json")
+
+
+def load_today():
+    """Today's situation, written by the daily scheduled update. Read fresh every time."""
+    try:
+        with open(TODAY, encoding="utf-8") as f:
+            t = json.load(f)
+        return {"updated": str(t.get("updated", "")), "lines": [str(x) for x in t.get("lines", [])][:40],
+                "sources": [str(x) for x in t.get("sources", [])][:40]}
+    except (OSError, ValueError):
+        return {"updated": "", "lines": [], "sources": []}
+
+
 def uid(text):
     """Short id that keeps letters of any language (Korean too)."""
     return re.sub(r"[^\w]+", "_", str(text or "").lower()).strip("_")[:40]
@@ -195,7 +209,9 @@ Write name and event in {lang}. Reply with JSON only:
 def suggest_outcomes(question, context, n=3, ask=None):
     """Ask the model for the main possible outcomes of a question."""
     ask = ask or ask_openai
-    user = "Today's world (context):\n" + "\n".join(f"- {c}" for c in context) + f"\n\nQuestion: {question}"
+    today = load_today()
+    lines = list(context) + ([f"(collected {today['updated']}) {c}" for c in today["lines"]] if today["lines"] else [])
+    user = "Today's world (context):\n" + "\n".join(f"- {c}" for c in lines) + f"\n\nQuestion: {question}"
     raw = ask(OUTCOMES_SYSTEM.format(n=n, lang=LANG), user)
     out = []
     for o in (raw.get("outcomes") or [])[:4]:
@@ -297,6 +313,10 @@ class World:
              "This step covers ONE TRADING DAY." if span == "day" else "This step covers one week.", "",
              "What the world looks like (context from the author):"]
         L += [f"- {c}" for c in self.cfg["context"]]
+        today = load_today()
+        if today["lines"]:
+            L.append(f"Latest news and market data (collected {today['updated']}):")
+            L += [f"- {c}" for c in today["lines"]]
 
         L += ["", "Basic indicators exist for these countries: " + ", ".join(self.cfg["countries"]),
               "Basic country indicator ids: <country>.<key> with keys: " +
@@ -338,7 +358,7 @@ class World:
 
         L += ["", "Historical cases:"]
         L += [f"- [{c.get('kind', 'event')}] {c['name']}: {c['event']} -> {c['effects']}" for c in self.cases]
-        L += ["", f"New event this week: {event}" if event else
+        L += ["", f"New event this step: {event}" if event else
               "No new event this step. Continue from what already happened."]
         if event and known and known.get("id") in exps:
             e = exps[known["id"]]
