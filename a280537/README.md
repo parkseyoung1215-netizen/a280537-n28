@@ -1,5 +1,7 @@
 # A280537: a new lower bound a(28) ≥ 58 (no four points in a plane)
 
+> This folder is part of [Challenging Real-World Problems](https://github.com/parkseyoung1215-netizen/challenging-real-world-problems), where I take on real problems with AI. Other projects there: a world simulator (what-if-world) and a furniture planner (say-and-build).
+
 **My decision.**
 I started this project because I wanted to become someone who solves hard or unsolved problems with AI. For my first attempt I tried the no-three-in-line problem, but even after trying many different cases and methods I did not succeed. So I decided to switch to a different problem from the list of problems I had set out at the beginning, and I chose this one. When the result came out, I cross-checked it again on my own MacBook to confirm it.
 
