@@ -71,6 +71,10 @@ class Handler(BaseHTTPRequestHandler):
                     w.undo()
                 elif self.path == "/api/reset":
                     w.reset()
+                elif self.path == "/api/expect/set":
+                    w.set_expectation(body.get("id"), body.get("topic"), body.get("outcomes"))
+                elif self.path == "/api/expect/delete":
+                    w.delete_expectation(body.get("id"))
                 elif self.path == "/api/branch/new":
                     name = str(body.get("name") or "").strip()[:40]
                     if not name or name in branches:
@@ -91,6 +95,8 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     return self.send(404, {"error": "not found"})
             self.send(200, self.everything())
+        except ValueError as e:
+            self.send(400, {"error": str(e)})
         except Exception as e:
             traceback.print_exc()
             self.send(500, {"error": str(e)})

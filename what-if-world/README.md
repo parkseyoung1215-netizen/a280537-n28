@@ -31,6 +31,15 @@ low when there is no real precedent (a blockade of Taiwan, for example). Low-con
 show the plausible range and are highlighted on screen, so a single number is not mistaken
 for a forecast.
 
+## Market expectations: markets react to surprises
+
+Markets move on what they did not expect. Add what markets have priced in ("Fed decision:
+cut 70%, hold 30%"). When an event is one of those outcomes, the code works out the surprise
+(an outcome priced at 30% is a 70% surprise) and the game master sizes the market reaction by
+it: a cut that everyone expected barely moves stocks, a surprise hold moves them a lot. After
+the event the game master updates what markets expect next (for example the chance of another
+cut). Expectations come from the author; the simulator never invents today's odds.
+
 ## Branches: compare two worlds
 
 A what-if needs something to compare with. Make a branch from any past week, give each

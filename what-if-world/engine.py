@@ -112,7 +112,17 @@ How to think:
     like a past case. For "low", give the
     plausible range in "uncertainty" (for example "US stocks could fall 2% or 15%") and pick a value
     in the middle of that range.
-13. Write label, interpretation, why, action, reason, uncertainty and narrative in {lang}.
+13. Market expectations: the prompt lists what markets have already priced in, with a probability
+    for each outcome. If the event is one of those outcomes, markets react to the SURPRISE, not to
+    the event itself: an outcome priced at 90% moves markets very little (most of it happened
+    before), an outcome priced at 10% moves them a lot, often more than the event alone would.
+    Name the match in "expectation_match". Things that are not market prices (laws, wars, protests,
+    supply) still change by the event itself.
+14. After the event, update what markets now expect in "expectation_updates": change probabilities,
+    add a new expectation that the event created (for example the chance of another rate cut), or
+    mark one as resolved. Only add expectations that markets really trade on.
+15. Write label, interpretation, why, action, reason, uncertainty, topic, outcome names and
+    narrative in {lang}.
 
 Reply with JSON only:
 {{
@@ -129,8 +139,19 @@ Reply with JSON only:
   ],
   "narrative": "3 to 6 sentences: what happened in the world this week",
   "confidence": "high | medium | low",
-  "uncertainty": "why, and the plausible range when confidence is low"
-}}"""
+  "uncertainty": "why, and the plausible range when confidence is low",
+  "expectation_match": {{"id": "expectation id", "outcome": "outcome name exactly as listed"}},
+  "expectation_updates": [
+    {{"id": "existing or new short id", "topic": "what markets are betting on", "outcomes": {{"outcome A": 60, "outcome B": 40}}}},
+    {{"id": "existing id", "resolved": true}}
+  ]
+}}
+Use "expectation_match": null when the event is not one of the listed outcomes."""
+
+
+def uid(text):
+    """Short id that keeps letters of any language (Korean too)."""
+    return re.sub(r"[^\w]+", "_", str(text or "").lower()).strip("_")[:40]
 
 
 def branch_path(name):
@@ -172,6 +193,7 @@ class World:
             with open(path, encoding="utf-8") as f:
                 saved = json.load(f)
             self.state, self.history = saved["state"], saved["history"]
+            self.state.setdefault("expectations", {})
             self.parent = saved.get("parent")
         else:
             self.parent = None
@@ -183,7 +205,11 @@ class World:
         child = World.__new__(World)
         child.name, child.cfg, child.cases = new_name, self.cfg, self.cases
         child.history = copy.deepcopy(self.history[:from_week])
-        child.state = copy.deepcopy(child.history[-1]["state"]) if child.history else child.fresh_state()
+        if from_week == self.state["week"]:
+            child.state = copy.deepcopy(self.state)  # includes expectations set since the last week
+        else:
+            child.state = copy.deepcopy(child.history[-1]["state"]) if child.history else child.fresh_state()
+        child.state.setdefault("expectations", {})
         child.parent = {"branch": self.name, "week": from_week}
         child.save()
         return child
@@ -201,7 +227,7 @@ class World:
         for c in self.cfg["countries"]:
             for k, spec in self.cfg["country_indicators"].items():
                 items[f"{slug(c)}.{k}"] = self.make_item(c, k, spec["label"], spec["unit"], True, spec.get("max_week"))
-        return {"week": 0, "date": self.cfg["start_date"], "items": items}
+        return {"week": 0, "date": self.cfg["start_date"], "items": items, "expectations": {}}
 
     @staticmethod
     def make_item(scope, name, label, unit, basic=False, max_week=None, week=0):
@@ -216,8 +242,9 @@ class World:
     def undo(self):
         if not self.history:
             return
-        self.history.pop()
+        undone = self.history.pop()
         self.state = copy.deepcopy(self.history[-1]["state"]) if self.history else self.fresh_state()
+        self.state["expectations"] = copy.deepcopy(undone.get("expectations_before", self.state.get("expectations", {})))
         self.save()
 
     def save(self):
@@ -262,6 +289,14 @@ class World:
         for c in recent:
             what = c["status"] if c["unit"] == "status" else f"{c['change']:+.1f} {c['unit']}"
             L.append(f"{c['id']}: {c['scope']} {c['name']} {what} ({c['reason']})")
+
+        L += ["", "Market expectations (what markets have priced in):"]
+        exps = self.state.get("expectations", {})
+        if not exps:
+            L.append("(none given)")
+        for eid, e in exps.items():
+            outs = ", ".join(f"{o} {p:.0f}%" for o, p in e["outcomes"].items())
+            L.append(f"{eid}: {e['topic']} -> {outs}")
 
         L += ["", "Historical cases:"]
         L += [f"- [{c.get('kind', 'event')}] {c['name']}: {c['event']} -> {c['effects']}" for c in self.cases]
@@ -376,6 +411,71 @@ class World:
             (it.get("scope_label") for it in items.values() if it["scope"] == scope and it.get("scope_label")), scope)
         return item_id
 
+    # ---------- market expectations ----------
+    @staticmethod
+    def clean_outcomes(outcomes):
+        """Probabilities as numbers that add up to 100."""
+        if not isinstance(outcomes, dict):
+            return None
+        out = {}
+        for k, v in list(outcomes.items())[:6]:
+            try:
+                v = float(v)
+            except (TypeError, ValueError):
+                continue
+            if v >= 0 and str(k).strip():
+                out[str(k).strip()[:60]] = v
+        total = sum(out.values())
+        if len(out) < 2 or total <= 0:
+            return None
+        return {k: round(v * 100 / total, 1) for k, v in out.items()}
+
+    def set_expectation(self, eid, topic, outcomes, source="author", week=None):
+        clean = self.clean_outcomes(outcomes)
+        topic = str(topic or "").strip()[:120]
+        if not clean or not topic:
+            raise ValueError("예상에는 주제와 결과가 두 개 이상 필요해요 (예: 인하 70, 동결 30)")
+        eid = uid(eid or topic) or f"exp{len(self.state['expectations']) + 1}"
+        self.state["expectations"][eid] = {"topic": topic, "outcomes": clean, "source": source,
+                                           "week": self.state["week"] if week is None else week}
+        self.save()
+        return eid
+
+    def delete_expectation(self, eid):
+        self.state["expectations"].pop(eid, None)
+        self.save()
+
+    def resolve_expectations(self, raw, week, has_event=True):
+        """Work out the surprise in code, then apply the model's updates."""
+        exps = self.state["expectations"]
+        surprise = None
+        m = raw.get("expectation_match") if has_event else None
+        if isinstance(m, dict) and m.get("id") in exps:
+            e = exps[m["id"]]
+            outcome = str(m.get("outcome") or "")
+            prob = e["outcomes"].get(outcome)
+            if prob is None:  # loose match on the outcome name
+                prob = next((p for o, p in e["outcomes"].items() if uid(o) == uid(outcome)), None)
+            if prob is not None:
+                surprise = {"id": m["id"], "topic": e["topic"], "outcome": outcome,
+                            "expected": prob, "surprise": round(100 - prob, 1)}
+                exps.pop(m["id"], None)  # the bet is settled
+        notes = []
+        for u in raw.get("expectation_updates") or []:
+            if not isinstance(u, dict) or not u.get("id"):
+                continue
+            key = u["id"] if u["id"] in exps else uid(u["id"])
+            if u.get("resolved"):
+                if exps.pop(key, None):
+                    notes.append(f"resolved {key}")
+                continue
+            clean = self.clean_outcomes(u.get("outcomes"))
+            topic = str(u.get("topic") or exps.get(key, {}).get("topic") or "").strip()[:120]
+            if clean and topic and key:
+                exps[key] = {"topic": topic, "outcomes": clean, "source": "AI", "week": week}
+                notes.append(f"set {key}")
+        return surprise, notes
+
     CONF_RANK = {"low": 0, "medium": 1, "high": 2}
     CONF_CARRY_WEEKS = 4
 
@@ -404,9 +504,11 @@ class World:
         week = self.state["week"] + 1
         raw = ask(SYSTEM.format(lang=LANG), self.build_prompt(event))
         before = copy.deepcopy(self.state)
+        expectations_before = copy.deepcopy(self.state["expectations"])
         try:
             changes, dropped = self.check(raw, week, has_event=bool(event))
             self.apply(changes)
+            surprise, exp_notes = self.resolve_expectations(raw, week, has_event=bool(event))
         except Exception:
             self.state = before
             raise
@@ -425,6 +527,9 @@ class World:
             "confidence": self.carried_confidence(raw.get("confidence")),
             "confidence_model": raw.get("confidence") if raw.get("confidence") in ("high", "medium", "low") else "",
             "uncertainty": str(raw.get("uncertainty") or "")[:400],
+            "surprise": surprise,
+            "expectations_before": expectations_before,
+            "expectation_notes": exp_notes,
             "state": copy.deepcopy(self.state),
         }
         self.history.append(entry)
