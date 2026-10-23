@@ -1,8 +1,6 @@
 # What-If World
 
-The world as a book, and you are the author. Set up today's world, write an event
-("Iran closes the Strait of Hormuz", "the Bank of Korea raises rates by 2 points",
-"wheat harvests fall 30%"), and watch how the world reacts week by week.
+Simulating the world with AI. Write an event or ask a question, and see how the world reacts.
 
 ## Ask a question
 
@@ -40,7 +38,7 @@ add lines yourself under "today's world situation".
    events, and the case used is shown. Cases from outside the list are marked.
 5. **Chains of effects**: every change says what caused it (the event, or an earlier change,
    also from earlier weeks). The screen shows the chain as a tree:
-   event → tanker traffic stopped → oil +30% → fuel prices in Korea +12% → government approval −4pp.
+   event → oil +30% → fuel prices in Korea +12% → government approval −4pp.
 6. **Code checks the AI**: unknown items, missing units and too-large weekly jumps are
    dropped or cut, and shown on screen.
 
@@ -87,5 +85,4 @@ today, because the model may not know recent events.
 
 ## Status
 
-Working prototype. Next: check the simulator against an event whose result is known
-(the 2026 Strait of Hormuz closure), and keep the world context up to date.
+Working prototype. Next: check the simulator's predictions against what really happens.
